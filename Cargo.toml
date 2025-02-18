@@ -7,8 +7,12 @@ readme = "README.md"
 repository = "https://github.com/tmillenaar/wordwarden"
 license = "MIT OR Apache-2.0"
 license-file = "LICENSE.txt"
-keywords = ["pre-commit", "git", "file", "searh"]
+keywords = ["pre-commit", "git", "file", "search"]
 categories = ["command-line-utilities"]
 
 [dependencies]
 regex = "1.11.1"
+
+[[bin]]
+name = "word_warden"
+path = "src/main.rs"
