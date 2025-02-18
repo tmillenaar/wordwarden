@@ -76,7 +76,7 @@ fn main() {
             Use --casecheck and --no-casecheck to determine whether the check should be case-sensitive.
                 The default is to not be case sensitive.
             Use '--escape=skip-this-line' to ignore occurances of words found on a line with the specified escape string.
-                The default escape string is 'noqa:skip-line'
+                The default escape string is 'wordwarden:skip-line'
         ",
             args[0]
         );
@@ -86,12 +86,20 @@ fn main() {
     let mut filepaths: Vec<&Path> = Vec::new();
     let mut search_strings: Vec<&String> = Vec::new();
     let mut check_case: bool = false;
-    let mut escape: String = "noqa:skip-line".to_string();
+    let mut escape: String = "wordwarden:skip-line".to_string();
 
     for arg in &args[1..] {
         let path = Path::new(arg);
         if path.is_file() {
-            filepaths.push(path);
+            // For better integration with pre-commit, don't check the .pre-commit-config.yaml
+            // for occurences because by the way the hook is set up, you specify the arguments
+            // to this package in that file. If we did not hardcode it here every user would
+            // need to use an escape entry in that config file.
+            if (path.file_name().unwrap() != ".pre-commit-config.yaml")
+                && (path.file_name().unwrap() != ".pre-commit-config.yml")
+            {
+                filepaths.push(path)
+            }
         } else if arg.starts_with("--casecheck") {
             check_case = true;
         } else if arg.starts_with("--no-casecheck") {
