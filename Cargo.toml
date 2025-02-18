@@ -1,6 +1,6 @@
 [package]
 name = "word_warden"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 description = "A command line tool that finds undesired strings in files. It's intended use is as a pre-commit hook to prevent the user from committing or pushing if certain words are found in the changed files such as debug statements or FIXME notices."
 readme = "README.md"
