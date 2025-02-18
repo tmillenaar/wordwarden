@@ -2,6 +2,13 @@
 name = "word_warden"
 version = "0.1.0"
 edition = "2021"
+description = "A command line tool that finds undesired strings in files. It's intended use is as a pre-commit hook to prevent the user from committing or pushing if certain words are found in the changed files such as debug statements or FIXME notices."
+readme = "README.md"
+repository = "https://github.com/tmillenaar/wordwarden"
+license = "MIT OR Apache-2.0"
+license-file = "LICENSE.txt"
+keywords = ["pre-commit", "git", "file", "searh"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 regex = "1.11.1"
