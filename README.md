@@ -19,9 +19,22 @@ repos:
     rev: v0.1.2
     hooks:
       - id: wordwarden
-        name: Check for Debug Statements
+        name: Word Warden - Debug Statements
         entry: word_warden
         args: ["breakpoint()", ".set_trace()"]
+        stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/tmillenaar/wordwarden
+    rev: v0.1.2
+    hooks:
+      - id: wordwarden
+        name: Word Warden - WIP comments
+        entry: word_warden
+        args: ["WIP", "FIXME", "nocheckin"]
+        stages: [pre-push]
 ```
+
+In this example every commit is checked on breakpoints and every push is checked on comments related to work-in-progress.
+Customize these words for your usecase. To make use of the pre-push, make sure to install that hook: ```pre-commit install --hook-type pre-commit --hook-type pre-push```.
 
 Repository: [tmillenaar/wordwarden](https://github.com/tmillenaar/wordwarden)
