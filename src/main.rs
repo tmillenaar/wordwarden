@@ -3,7 +3,8 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::process; // breakpoint()
+use std::process;
+
 const BOLD_START: &str = "\x1b[1m";
 const BOLD_END: &str = "\x1b[0m";
 
@@ -64,7 +65,7 @@ fn check_file(
 
     Ok(found)
 }
-// bla breakpoint() // noqa:skip-line
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -120,10 +121,10 @@ fn main() {
         }
     }
 
-    let line_buffer = 1;
+    let extra_line_space = 1;
     let max_line_length = &results
         .iter()
-        .map(|r| (line_buffer + r.filename.len() + r.line_number.to_string().len()))
+        .map(|r| (extra_line_space + r.filename.len() + r.line_number.to_string().len()))
         .max()
         .unwrap_or(0);
     for result in results {
