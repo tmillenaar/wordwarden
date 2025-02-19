@@ -4,4 +4,4 @@
   entry: cargo run --release --bin word_warden
   language: rust
   minimum_pre_commit_version: 3.0.0
-  require_serial: true
+  require_serial: false
