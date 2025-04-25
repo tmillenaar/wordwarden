@@ -112,7 +112,7 @@ fn main() {
     let mut escape: String = "wordwarden:skip-line".to_string();
 
     let mut i = 1;
-    for _ in 1..(args[1..].len()) {
+    while i <= args[1..].len() {
         let arg = &args[i];
         let path = Path::new(&arg);
         if path.is_file() {
@@ -136,7 +136,7 @@ fn main() {
             check_case = false;
         } else if arg.starts_with("--escape=") {
             escape = arg.replace("--escape=", "");
-        } else if arg.starts_with("-a") {
+        } else if arg.starts_with("-w") {
             // Treat -w as the precursor for a word to check, append the next word to the search_strings vec
             i += 1;
             search_strings.push(&args[i])
