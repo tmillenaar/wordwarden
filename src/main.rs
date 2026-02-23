@@ -6,6 +6,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process;
 
+use rayon::prelude::*;
+
 const BOLD_START: &str = "\x1b[1m";
 const BOLD_END: &str = "\x1b[0m";
 
@@ -48,42 +50,60 @@ fn files_in_dir(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
 
 fn check_file(
     filename: &Path,
-    results: &mut Vec<Occurance>,
     target: &str,
     check_case: bool,
     escape: &str,
-) -> io::Result<bool> {
-    let file = File::open(filename)?;
+) -> io::Result<Vec<Occurance>> {
+    let file = match File::open(filename) {
+        Ok(f) => f,
+        Err(e) => return Err(e),
+    };
     let reader = io::BufReader::new(file);
-    let mut found = false;
 
-    for (index, line) in reader.lines().enumerate() {
-        if let Ok(line) = line {
-            let mut target_in_line: bool;
-            if line.contains(escape) {
-                continue;
+    let mut results = Vec::new();
+
+    // Compile regex once if needed
+    let regex = if !check_case {
+        let pattern = format!(r"(?i){}", regex::escape(target));
+        Some(Regex::new(&pattern).unwrap())
+    } else {
+        None
+    };
+
+    for (index, line_result) in reader.lines().enumerate() {
+        let line = match line_result {
+            Ok(l) => l,
+            Err(e) => {
+                // Skip file if invalid UTF-8
+                if e.kind() == io::ErrorKind::InvalidData {
+                    return Ok(Vec::new());
+                } else {
+                    return Err(e);
+                }
             }
-            if check_case {
-                target_in_line = line.contains(target);
-            } else {
-                let regex_pattern = format!(r"(?i){}", regex::escape(target));
-                let re = Regex::new(&regex_pattern).unwrap();
-                target_in_line = re.is_match(&line);
-            }
-            if target_in_line {
-                let occurance = Occurance {
-                    filename: filename.to_str().unwrap().to_owned(),
-                    line_number: index + 1,
-                    target_string: target.to_string(),
-                    line_content: line,
-                };
-                results.push(occurance);
-                found = true;
-            }
+        };
+
+        if line.contains(escape) {
+            continue;
+        }
+
+        let target_in_line = if check_case {
+            line.contains(target)
+        } else {
+            regex.as_ref().unwrap().is_match(&line)
+        };
+
+        if target_in_line {
+            results.push(Occurance {
+                filename: filename.to_string_lossy().to_string(),
+                line_number: index + 1,
+                target_string: target.to_string(),
+                line_content: line,
+            });
         }
     }
 
-    Ok(found)
+    Ok(results)
 }
 
 fn main() {
@@ -146,29 +166,23 @@ fn main() {
         i += 1;
     }
 
-    let mut found_any = false;
-    let mut results: Vec<Occurance> = Vec::new();
-    for path in filepaths {
-        for target in &search_strings {
-            match check_file(
-                &path.to_path_buf(),
-                &mut results,
-                target,
-                check_case,
-                &escape,
-            ) {
-                Ok(found) => {
-                    if found {
-                        found_any = true;
-                    }
-                }
-                Err(err) => {
-                    eprintln!("Error reading '{}': {}", path.to_str().unwrap_or("?"), err);
-                    process::exit(2);
-                }
+    let all_results: io::Result<Vec<Occurance>> = filepaths
+        .par_iter()
+        .map(|path| {
+            let mut file_results = Vec::new();
+
+            for target in &search_strings {
+                let mut r = check_file(path, target, check_case, &escape)?;
+                file_results.append(&mut r);
             }
-        }
-    }
+
+            Ok(file_results)
+        })
+        .collect::<Result<Vec<_>, io::Error>>() // Vec<Vec<Occurance>>
+        .map(|vec_of_vecs| vec_of_vecs.into_iter().flatten().collect());
+
+    let results = all_results.unwrap();
+    let found_any = !results.is_empty();
 
     let extra_line_space = 1;
     let max_line_length = &results
