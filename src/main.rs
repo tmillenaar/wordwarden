@@ -126,6 +126,8 @@ fn main() {
             Use -w to force the interpretation of the argument as a word if it also happens to be the name of
                 a file or directory. This might look like: {} examples -w 'examples'
                 In that example we check for the word 'examples' in the files in the folder called examples
+            Use --no-highlighting to disable colour highlighting of the output (default: --highlighting).
+            Use --separator to print a dashed line seperating the different files (default: --no-separator).
         ",
             args[0], args[0]
         );
@@ -135,6 +137,8 @@ fn main() {
     let mut filepaths: Vec<PathBuf> = Vec::new();
     let mut search_strings: Vec<&String> = Vec::new();
     let mut check_case: bool = false;
+    let mut highlighting: bool = true;
+    let mut separator: bool = false;
     let mut escape: String = "wordwarden:skip-line".to_string();
 
     let mut i = 1;
@@ -160,6 +164,14 @@ fn main() {
             check_case = true;
         } else if arg.starts_with("--no-casecheck") {
             check_case = false;
+        } else if arg.starts_with("--highlighting") {
+            highlighting = true;
+        } else if arg.starts_with("--no-highlighting") {
+            highlighting = false;
+        } else if arg.starts_with("--separator") {
+            separator = true;
+        } else if arg.starts_with("--no-separator") {
+            separator = false;
         } else if arg.starts_with("--escape=") {
             escape = arg.replace("--escape=", "");
         } else if arg.starts_with("-w") {
@@ -203,32 +215,43 @@ fn main() {
         let path = result.filename.as_path();
         let dir = path.parent().and_then(|p| p.to_str()).unwrap_or("");
         let file = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-        let filename_and_line_number = format!(
-            "{}/{}{}{}:{}{}{}",
-            dir,
-            HIGHLIGHT_ORANGE,
-            file,
-            HIGHLIGHT_END,
-            HIGHLIGHT_BOLD,
-            result.line_number,
-            HIGHLIGHT_END
-        );
+        let filename_and_line_number = if highlighting {
+            format!(
+                "{}/{}{}{}:{}{}{}",
+                dir,
+                HIGHLIGHT_ORANGE,
+                file,
+                HIGHLIGHT_END,
+                HIGHLIGHT_BOLD,
+                result.line_number,
+                HIGHLIGHT_END
+            )
+        } else {
+            format!("{}/{}:{}", dir, file, result.line_number,)
+        };
         let line_width = filename_and_line_number.len()
             + number_of_numbers_in_number(*max_line_number)
             - number_of_numbers_in_number(result.line_number);
+        let mut line_text = if highlighting {
+            highlight_text(&result.line_content.trim_start(), &result.target_string)
+        } else {
+            result.line_content.trim_start().to_string()
+        };
         let print_line = format!(
             "{:<width$} -> {}",
             filename_and_line_number,
-            highlight_text(&result.line_content.trim_start(), &result.target_string),
+            line_text,
             width = line_width + line_space_alignment_buffer
         );
-        match current_file {
-            Some(file) => {
-                if result.filename != file {
-                    println!("{}", "-".repeat(20));
+        if separator {
+            match current_file {
+                Some(file) => {
+                    if result.filename != file {
+                        println!("{}", "-".repeat(20));
+                    }
                 }
+                None => {}
             }
-            None => {}
         }
         println!("{}", print_line);
         current_file = Some(result.filename);
