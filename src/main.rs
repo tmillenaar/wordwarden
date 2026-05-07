@@ -8,12 +8,14 @@ use std::process;
 
 use rayon::prelude::*;
 
-const BOLD_START: &str = "\x1b[1m";
-const BOLD_END: &str = "\x1b[0m";
+const HIGHLIGHT_BOLD: &str = "\x1b[1m";
+const HIGHLIGHT_ORANGE: &str = "\x1b[38;5;208m";
+const HIGHLIGHT_RED: &str = "\x1b[31m";
+const HIGHLIGHT_END: &str = "\x1b[0m";
 
 #[derive(Debug)]
 struct Occurance {
-    filename: String,
+    filename: PathBuf,
     line_number: usize,
     target_string: String,
     line_content: String,
@@ -24,7 +26,7 @@ fn highlight_text(line: &str, highlight_text: &str) -> String {
     let re = Regex::new(&regex_pattern).unwrap();
 
     re.replace_all(line, |captures: &Captures| {
-        format!("{}{}{}", BOLD_START, &captures[0], BOLD_END)
+        format!("{}{}{}", HIGHLIGHT_RED, &captures[0], HIGHLIGHT_END)
     })
     .to_string()
 }
@@ -95,7 +97,7 @@ fn check_file(
 
         if target_in_line {
             results.push(Occurance {
-                filename: filename.to_string_lossy().to_string(),
+                filename: filename.to_path_buf(),
                 line_number: index + 1,
                 target_string: target.to_string(),
                 line_content: line,
@@ -104,6 +106,10 @@ fn check_file(
     }
 
     Ok(results)
+}
+
+fn number_of_numbers_in_number(val: usize) -> usize {
+    val.ilog10() as usize + 1
 }
 
 fn main() {
@@ -184,21 +190,48 @@ fn main() {
     let results = all_results.unwrap();
     let found_any = !results.is_empty();
 
-    let extra_line_space = 1;
-    let max_line_length = &results
+    let line_space_alignment_buffer = 2;
+
+    let max_line_number = &results
         .iter()
-        .map(|r| (extra_line_space + r.filename.len() + r.line_number.to_string().len()))
+        .map(|r| r.line_number.to_string().len())
         .max()
         .unwrap_or(0);
+    dbg!(max_line_number);
+    let mut current_file = None;
     for result in results {
-        let filename_and_line_number = format!("{}:{}", result.filename, result.line_number);
+        let path = result.filename.as_path();
+        let dir = path.parent().and_then(|p| p.to_str()).unwrap_or("");
+        let file = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+        let filename_and_line_number = format!(
+            "{}/{}{}{}:{}{}{}",
+            dir,
+            HIGHLIGHT_ORANGE,
+            file,
+            HIGHLIGHT_END,
+            HIGHLIGHT_BOLD,
+            result.line_number,
+            HIGHLIGHT_END
+        );
+        let line_width = filename_and_line_number.len()
+            + number_of_numbers_in_number(*max_line_number)
+            - number_of_numbers_in_number(result.line_number);
         let print_line = format!(
             "{:<width$} -> {}",
             filename_and_line_number,
             highlight_text(&result.line_content, &result.target_string),
-            width = max_line_length
+            width = line_width + line_space_alignment_buffer
         );
+        match current_file {
+            Some(file) => {
+                if result.filename != file {
+                    println!("{}", "-".repeat(20));
+                }
+            }
+            None => {}
+        }
         println!("{}", print_line);
+        current_file = Some(result.filename);
     }
 
     process::exit(if found_any { 1 } else { 0 });
