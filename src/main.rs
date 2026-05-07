@@ -209,7 +209,6 @@ fn main() {
         .map(|r| r.line_number.to_string().len())
         .max()
         .unwrap_or(0);
-    dbg!(max_line_number);
     let mut current_file = None;
     for result in results {
         let path = result.filename.as_path();
