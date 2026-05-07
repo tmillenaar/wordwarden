@@ -219,7 +219,7 @@ fn main() {
         let print_line = format!(
             "{:<width$} -> {}",
             filename_and_line_number,
-            highlight_text(&result.line_content, &result.target_string),
+            highlight_text(&result.line_content.trim_start(), &result.target_string),
             width = line_width + line_space_alignment_buffer
         );
         match current_file {
